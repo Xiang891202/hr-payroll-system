@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>人資薪資計算系統完整版</title>
+
+  <style>
+    :root {
+      --bg:#f6f7fb;
+      --panel:#fff;
+      --line:#d9deea;
+      --text:#222;
+      --muted:#667085;
+      --primary:#1f6feb;
+      --danger:#c93636;
+      --success:#11875d;
+      --radius:14px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .app{
+      max-width:1400px;
+      margin:auto;
+      padding:20px;
+    }
+
+    .hero{
+      background:linear-gradient(135deg,#1f6feb,#5a8dee);
+      color:#fff;
+      padding:20px;
+      border-radius:18px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:260px 1fr;
+      gap:16px;
+      margin-top:16px;
+    }
+
+    .sidebar{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:12px;
+      position:sticky;
+      top:10px;
+      height:fit-content;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:16px;
+      margin-bottom:16px;
+    }
+
+    button{
+      padding:8px 12px;
+      border:0;
+      border-radius:10px;
+      cursor:pointer;
+      background:var(--primary);
+      color:#fff;
+      font-weight:600;
+    }
+
+    button:hover{opacity:.9}
+
+    .danger{background:var(--danger)}
+    .success{background:var(--success)}
+
+    input,select,textarea{
+      width:100%;
+      padding:8px;
+      border:1px solid var(--line);
+      border-radius:10px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+
+    th,td{
+      border-bottom:1px solid var(--line);
+      padding:8px;
+      text-align:left;
+    }
+
+    .hidden{display:none}
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <div class="hero">
+    <h1>人資薪資計算系統（完整版）</h1>
+    <p>可管理員工、出勤、加班、薪資試算與薪資單</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- 左側 -->
+    <div class="sidebar">
+      <button onclick="showTab('emp')">員工管理</button><br><br>
+      <button onclick="showTab('att')">出勤資料</button><br><br>
+      <button onclick="showTab('pay')">薪資試算</button><br><br>
+      <button class="danger" onclick="resetAll()">清空資料</button>
+    </div>
+
+    <!-- 右側 -->
+    <div>
+
+      <!-- 員工 -->
+      <div id="emp" class="panel">
+        <h2>員工管理</h2>
+
+        <input id="name" placeholder="姓名">
+        <br><br>
+        <input id="salary" type="number" placeholder="月薪">
+        <br><br>
+
+        <button onclick="addEmp()">新增員工</button>
+
+        <h3>列表</h3>
+        <table>
+          <thead>
+            <tr><th>姓名</th><th>月薪</th></tr>
+          </thead>
+          <tbody id="empList"></tbody>
+        </table>
+      </div>
+
+      <!-- 出勤 -->
+      <div id="att" class="panel hidden">
+        <h2>出勤資料</h2>
+
+        <select id="empSelect"></select>
+        <br><br>
+
+        <input id="days" type="number" placeholder="出勤天數">
+        <br><br>
+
+        <button onclick="saveAtt()">儲存出勤</button>
+      </div>
+
+      <!-- 薪資 -->
+      <div id="pay" class="panel hidden">
+        <h2>薪資試算</h2>
+
+        <select id="payEmp"></select>
+        <br><br>
+
+        <button onclick="calc()">計算</button>
+
+        <div id="result"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+let employees = JSON.parse(localStorage.getItem("emp")||"[]");
+let attendance = JSON.parse(localStorage.getItem("att")||"[]");
+
+function save(){
+  localStorage.setItem("emp",JSON.stringify(employees));
+  localStorage.setItem("att",JSON.stringify(attendance));
+}
+
+function showTab(t){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.add("hidden"));
+  document.getElementById(t).classList.remove("hidden");
+}
+
+function addEmp(){
+  const n=document.getElementById("name").value;
+  const s=+document.getElementById("salary").value;
+  employees.push({id:Date.now(),name:n,salary:s});
+  save();
+  render();
+}
+
+function render(){
+  const list=document.getElementById("empList");
+  list.innerHTML=employees.map(e=>`<tr><td>${e.name}</td><td>${e.salary}</td></tr>`).join("");
+
+  const sel=document.getElementById("empSelect");
+  const sel2=document.getElementById("payEmp");
+  sel.innerHTML=employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join("");
+  sel2.innerHTML=sel.innerHTML;
+}
+
+function saveAtt(){
+  attendance.push({
+    empId:+document.getElementById("empSelect").value,
+    days:+document.getElementById("days").value
+  });
+  save();
+  alert("已儲存");
+}
+
+function calc(){
+  const id=+document.getElementById("payEmp").value;
+  const emp=employees.find(e=>e.id===id);
+  const att=attendance.find(a=>a.empId===id);
+
+  if(!emp||!att)return;
+
+  const pay=(emp.salary/30)*att.days;
+
+  document.getElementById("result").innerHTML=
+    `<h3>應發薪資：${Math.round(pay)}</h3>`;
+}
+
+function resetAll(){
+  localStorage.clear();
+  employees=[];
+  attendance=[];
+  render();
+}
+
+render();
+showTab('emp');
+</script>
+
+</body>
+</html>
